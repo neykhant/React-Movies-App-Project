@@ -3,9 +3,12 @@ import React, { Component } from "react";
 import { getMovies } from "../services/fakeMovieService";
 import { getGenres } from "../services/fakeGenreService";
 import ListGroup from "./common/ListGroup";
-import Like from "./common/Like";
-import Paginate from "./common/Paginate";
+// import Paginate from "./common/Paginate";
 import { paginate } from "./common/paginate";
+import Pagination from "./common/Pagination";
+import MoviesTable from "./MoviesTable";
+import _ from "lodash";
+
 
 class Movies extends Component {
   state = {
@@ -13,20 +16,21 @@ class Movies extends Component {
     genres: [],
     pageSize: 4,
     currentPage: 1,
+    sortColumn: {path: 'title', order: 'asc'}
   };
+
 
   componentDidMount() {
     const genres = [{ _id: "", name: "All Genres" }, ...getGenres()];
     this.setState({
       movies: getMovies(),
-      genres ,
-      selectedGenre: genres[0]
+      genres,
+      selectedGenre: genres[0],
     });
   }
 
   handleGenreSelect = (genre) => {
     this.setState({ selectedGenre: genre, currentPage: 1 });
-
     // console.log(genre);
   };
 
@@ -47,9 +51,14 @@ class Movies extends Component {
     this.setState({ currentPage: page });
   };
 
+  handleSort = (sortColumn) => {    
+    // this.setState({ sortColumn: {path, order: 'asc'}})
+    this.setState({ sortColumn })
+  }
+
   render() {
     const { length: count } = this.state.movies;
-    const { movies, pageSize, currentPage, genres, selectedGenre } = this.state;
+    const { movies, sortColumn , pageSize, currentPage, genres, selectedGenre } = this.state;
 
     if (count === 0) return <p>There are no movies in the database.</p>;
 
@@ -58,7 +67,9 @@ class Movies extends Component {
         ? movies.filter((m) => m.genre._id === selectedGenre._id)
         : movies;
 
-    const allMovies = paginate(filtered, currentPage, pageSize);
+    const sorted = _.orderBy(filtered, [sortColumn.path], [sortColumn.order]);
+
+    const allMovies = paginate(sorted, currentPage, pageSize);
 
     return (
       <React.Fragment>
@@ -72,44 +83,16 @@ class Movies extends Component {
           </div>
           <div className="col">
             <p>There are {filtered.length} movies in the database.</p>
-            <table className="table">
-              <thead>
-                <tr>
-                  <th scope="col">Title</th>
-                  <th scope="col">Gener</th>
-                  <th scope="col">Stock</th>
-                  <th scope="col">Rante</th>
-                  <th scope="col">Like</th>
-                  <th scope="col">Delete</th>
-                </tr>
-              </thead>
-              <tbody>
-                {allMovies.map((movie) => (
-                  <tr key={movie._id}>
-                    <td>{movie.title}</td>
-                    <td>{movie.genre.name}</td>
-                    <td>{movie.numberInStock}</td>
-                    <td>{movie.dailyRentalRate}</td>
-                    <td>
-                      <Like
-                        Liked={movie.liked}
-                        onClick={() => this.handleLike(movie)}
-                      />{" "}
-                    </td>
-                    <td
-                      className="btn btn-warning btn-sm"
-                      onClick={() => this.handleDelete(movie)}
-                    >
-                      Delete
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
+            <MoviesTable
+              movies={allMovies}
+              sortColumn={sortColumn}
+              onSort={this.handleSort}
+              onLike={this.handleLike}
+              onDelete={this.handleDelete}
+            />
           </div>
         </div>
-
-        <Paginate
+        <Pagination
           itemCount={filtered.length}
           currentPage={currentPage}
           pageSize={this.state.pageSize}
